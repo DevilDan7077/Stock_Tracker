@@ -1,0 +1,8 @@
+# requirements.txt
+# Stock Tracker API — Python Dependencies
+# Install with: pip install -r requirements.txt
+
+flask==3.1.2
+flask-cors==4.0.1
+yfinance==0.2.40
+gunicorn==22.0.0

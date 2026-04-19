@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stock Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #0b0f1a;
+      --surface: #111827;
+      --surface2:#151e2e;
+      --border:  #1f2d45;
+      --accent:  #3b82f6;
+      --accent2: #06b6d4;
+      --green:   #10b981;
+      --red:     #ef4444;
+      --text:    #f1f5f9;
+      --muted:   #64748b;
+      --muted2:  #94a3b8;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background: var(--bg);
+      font-family: 'Outfit', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── NAVBAR ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .nav-logo span { font-size: 1.4rem; }
+    .nav-logo small {
+      font-size: 0.62rem;
+      font-weight: 400;
+      color: var(--muted2);
+      display: block;
+      line-height: 1;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav-tab {
+      padding: 7px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--muted2);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-family: 'Outfit', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .nav-tab:hover { color: var(--text); background: var(--surface2); }
+    .nav-tab.active { color: var(--accent); background: rgba(59,130,246,0.1); }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: var(--green);
+    }
+
+    .live-indicator::before {
+      content: '';
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .user-pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      color: var(--muted2);
+    }
+
+    .user-pill strong { color: var(--text); }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted2);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── TICKER ── */
+    .ticker {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      padding: 8px 0;
+      position: relative;
+    }
+
+    .ticker::before, .ticker::after {
+      content: '';
+      position: absolute;
+      top:0; bottom:0;
+      width: 60px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .ticker::before { left:0; background: linear-gradient(90deg, var(--surface2), transparent); }
+    .ticker::after  { right:0; background: linear-gradient(-90deg, var(--surface2), transparent); }
+
+    .ticker-inner {
+      display: flex;
+      gap: 40px;
+      width: max-content;
+      animation: tickscroll 30s linear infinite;
+    }
+
+    @keyframes tickscroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+    .ti { display:flex; align-items:center; gap:8px; font-size:0.78rem; white-space:nowrap; }
+    .ti-sym { color: var(--accent); font-weight:600; }
+    .ti-up  { color: var(--green); }
+    .ti-dn  { color: var(--red); }
+
+    /* ── PAGES ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    /* ── FLASH ── */
+    .flash {
+      padding: 11px 16px;
+      border-radius: 10px;
+      font-size: 0.83rem;
+      margin-bottom: 16px;
+    }
+    .flash.success { background: rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); color:#34d399; }
+    .flash.error   { background: rgba(239,68,68,0.08);  border:1px solid rgba(239,68,68,0.25);  color:#f87171; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── INDEX CARDS ── */
+    .index-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .index-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .index-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+    .idx-name { font-size:0.68rem; color:var(--muted); margin-bottom:6px; letter-spacing:1px; }
+    .idx-val  { font-size:1.4rem; font-weight:700; }
+    .idx-chg  { font-size:0.78rem; margin-top:4px; }
+    .up { color: var(--green); }
+    .dn { color: var(--red); }
+
+    /* ── SEARCH ── */
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .search-row input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+      text-transform: uppercase;
+    }
+
+    .search-row input:focus { border-color: var(--accent); }
+    .search-row input::placeholder { text-transform:none; color:var(--muted); font-size:0.85rem; }
+
+    .btn-search {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-search:hover { opacity:0.88; transform:translateY(-1px); }
+
+    /* ── STOCK RESULT ── */
+    .stock-result {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    .sr-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .sr-sym  { font-size:0.7rem; color:var(--accent); margin-bottom:3px; letter-spacing:1px; }
+    .sr-name { font-size:1.05rem; font-weight:600; }
+    .sr-price { font-size:1.9rem; font-weight:700; text-align:right; }
+    .sr-chg   { font-size:0.82rem; text-align:right; margin-top:3px; }
+
+    .sr-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .sr-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 14px;
+    }
+
+    .sr-stat-lbl { font-size:0.62rem; color:var(--muted); margin-bottom:3px; }
+    .sr-stat-val { font-size:0.88rem; }
+
+    /* ── TABLE ── */
+    table { width:100%; border-collapse:collapse; }
+
+    thead th {
+      font-size:0.68rem;
+      color:var(--muted);
+      text-align:left;
+      padding:0 14px 12px;
+      border-bottom:1px solid var(--border);
+      font-weight:500;
+      letter-spacing:0.5px;
+    }
+
+    tbody tr {
+      border-bottom:1px solid rgba(255,255,255,0.04);
+      transition:background 0.15s;
+      cursor:pointer;
+    }
+
+    tbody tr:hover { background:rgba(255,255,255,0.03); }
+    tbody tr:last-child { border-bottom:none; }
+    tbody td { padding:13px 14px; font-size:0.88rem; }
+
+    .td-sym  { color:var(--accent); font-weight:600; }
+    .td-name { color:var(--muted2); font-size:0.78rem; }
+
+    .badge {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:3px 10px; border-radius:6px;
+      font-size:0.75rem; font-weight:500;
+    }
+
+    .badge.up { background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
+    .badge.dn { background:rgba(239,68,68,0.1);  color:var(--red);   border:1px solid rgba(239,68,68,0.2); }
+
+    /* ── WALLET ── */
+    .wallet-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .wallet-form input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .wallet-form input:focus { border-color: var(--accent); }
+    .wallet-form input::placeholder { color:var(--muted); }
+    .in-sym { width:130px; text-transform:uppercase; }
+    .in-qty { width:90px; }
+
+    .btn-buy {
+      background: linear-gradient(135deg, var(--green), #059669);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .btn-buy:hover { opacity:0.88; transform:translateY(-1px); }
+
+    /* Portfolio table */
+    .port-tbl { width:100%; border-collapse:collapse; table-layout:fixed; }
+
+    .port-tbl thead th {
+      font-size:0.66rem; color:var(--muted);
+      text-align:left; padding:0 10px 12px;
+      border-bottom:1px solid var(--border);
+      font-weight:500;
+    }
+
+    .port-tbl colgroup col:nth-child(1){width:16%}
+    .port-tbl colgroup col:nth-child(2){width:12%}
+    .port-tbl colgroup col:nth-child(3){width:18%}
+    .port-tbl colgroup col:nth-child(4){width:20%}
+    .port-tbl colgroup col:nth-child(5){width:18%}
+    .port-tbl colgroup col:nth-child(6){width:16%}
+
+    .port-tbl tbody tr {
+      border-bottom:1px solid rgba(255,255,255,0.04);
+      transition:background 0.15s;
+    }
+
+    .port-tbl tbody tr:hover { background:rgba(255,255,255,0.03); }
+    .port-tbl tbody tr:last-child { border-bottom:none; }
+    .port-tbl tbody td { padding:12px 10px; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* Remove button — big and clear */
+    .btn-remove {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      background: rgba(239,68,68,0.1);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.35);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .btn-remove:hover { background:rgba(239,68,68,0.22); border-color:var(--red); transform:scale(1.1); }
+
+    .total-row {
+      margin-top: 16px;
+      background: rgba(59,130,246,0.06);
+      border: 1px solid rgba(59,130,246,0.15);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .total-lbl { font-size:0.78rem; color:var(--muted); }
+    .total-val { font-size:1.3rem; font-weight:700; color:var(--accent); }
+
+    .empty-wallet {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 2;
+    }
+
+    .empty-wallet span { font-size:2.2rem; display:block; margin-bottom:10px; }
+
+    /* ── CREDITS ── */
+    .credits-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 36px;
+      text-align: center;
+    }
+
+    .credits-wrap h3 {
+      font-size:0.68rem;
+      letter-spacing:2px;
+      color:var(--muted);
+      text-transform:uppercase;
+      margin-bottom:24px;
+    }
+
+    .credits-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .credit-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 24px;
+      text-align: left;
+      transition: border-color 0.2s, transform 0.2s;
+      min-width: 180px;
+    }
+
+    .credit-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+    .credit-name { font-size:0.92rem; font-weight:600; }
+    .credit-id   { font-size:0.72rem; color:var(--accent); margin-top:4px; }
+
+    .credits-footer {
+      margin-top: 28px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 2;
+    }
+
+    /* ── LOADING SPINNER ── */
+    .spinner {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: var(--muted2);
+      font-size: 0.85rem;
+    }
+
+    .spinner.show { display: block; }
+
+    @media(max-width:768px) {
+      nav { padding:0 16px; flex-wrap:wrap; height:auto; padding:10px 16px; gap:10px; }
+      .nav-tabs { gap:2px; }
+      .nav-tab { padding:6px 10px; font-size:0.78rem; }
+      .index-grid { grid-template-columns:1fr; }
+      .sr-stats { grid-template-columns:1fr 1fr; }
+      .container { padding:16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVBAR ── -->
+<nav>
+  <div class="nav-logo">
+    <span>📈</span>
+    <div>
+      Stock Tracker
+      <small>NSUT</small>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('dashboard', this)">🏠 Dashboard</button>
+    <button class="nav-tab" onclick="showTab('wallet', this)">💼 My Wallet</button>
+    <button class="nav-tab" onclick="showTab('market', this)">📊 Market</button>
+    <button class="nav-tab" onclick="showTab('credits', this)">👥 Credits</button>
+  </div>
+
+  <div class="nav-right">
+    <div class="live-indicator">LIVE</div>
+    <div class="user-pill">👤 <strong>{{ username }}</strong></div>
+    <form method="POST" action="/logout" style="margin:0">
+      <button class="btn-logout" type="submit">Logout</button>
+    </form>
+  </div>
+</nav>
+
+<!-- ── TICKER ── -->
+<div class="ticker">
+  <div class="ticker-inner">
+    {% for s in all_stocks %}
+    <div class="ti">
+      <span class="ti-sym">{{ s.symbol }}</span>
+      <span>${{ "%.2f"|format(s.price) }}</span>
+      <span class="{{ 'ti-up' if s.change_pct >= 0 else 'ti-dn' }}">
+        {{ "▲" if s.change_pct >= 0 else "▼" }}{{ "%.2f"|format(s.change_pct|abs) }}%
+      </span>
+    </div>
+    <span style="color:#1f2d45">|</span>
+    {% endfor %}
+    {% for s in all_stocks %}
+    <div class="ti">
+      <span class="ti-sym">{{ s.symbol }}</span>
+      <span>${{ "%.2f"|format(s.price) }}</span>
+      <span class="{{ 'ti-up' if s.change_pct >= 0 else 'ti-dn' }}">
+        {{ "▲" if s.change_pct >= 0 else "▼" }}{{ "%.2f"|format(s.change_pct|abs) }}%
+      </span>
+    </div>
+    <span style="color:#1f2d45">|</span>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════════════════════════════ -->
+<!-- TAB: DASHBOARD                   -->
+<!-- ════════════════════════════════ -->
+<div class="page active" id="tab-dashboard">
+  <div class="container">
+
+    {% for msg, cat in messages %}
+    <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+
+    <!-- Market Indices -->
+    <div class="index-grid">
+      {% for name, idx in market.items() %}
+      <div class="index-card">
+        <div class="idx-name">{{ name }}</div>
+        <div class="idx-val">{{ "{:,.2f}".format(idx.value) }}</div>
+        <div class="idx-chg {{ 'up' if idx.change >= 0 else 'dn' }}">
+          {{ "▲" if idx.change >= 0 else "▼" }}
+          {{ "%.2f"|format(idx.change_pct|abs) }}%
+          &nbsp;{{ "%+.2f"|format(idx.change) }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Search -->
+    <div class="card">
+      <div class="section-title">🔍 Search Any Stock</div>
+      <form class="search-row" method="GET" action="/">
+        <input type="text" name="symbol"
+          placeholder="Type any ticker — AAPL, NVDA, TSLA, MSFT , AMZN..."
+          value="{{ search_symbol or '' }}"
+          maxlength="20" autocomplete="off"/>
+        <button class="btn-search" type="submit">Search</button>
+      </form>
+
+      
+
+      {% if stock %}
+      <div class="stock-result">
+        <div class="sr-top">
+          <div>
+            <div class="sr-sym">{{ stock.symbol }} · {{ stock.exchange }} · {{ stock.currency }}</div>
+            <div class="sr-name">{{ stock.name }}</div>
+          </div>
+          <div>
+            <div class="sr-price {{ 'up' if stock.change >= 0 else 'dn' }}">${{ "%.2f"|format(stock.price) }}</div>
+            <div class="sr-chg {{ 'up' if stock.change >= 0 else 'dn' }}">
+              {{ "%+.2f"|format(stock.change) }} &nbsp;({{ "%+.2f"|format(stock.change_pct) }}%)
+            </div>
+          </div>
+        </div>
+        <div class="sr-stats">
+          <div class="sr-stat">
+            <div class="sr-stat-lbl">VOLUME</div>
+            <div class="sr-stat-val">{{ "{:,}".format(stock.volume) }}</div>
+          </div>
+          <div class="sr-stat">
+            <div class="sr-stat-lbl">MARKET CAP</div>
+            <div class="sr-stat-val">
+              {% if stock.market_cap > 1e12 %}
+                ${{ "%.2fT"|format(stock.market_cap/1e12) }}
+              {% elif stock.market_cap > 1e9 %}
+                ${{ "%.2fB"|format(stock.market_cap/1e9) }}
+              {% else %}
+                ${{ "{:,}"|format(stock.market_cap|int) }}
+              {% endif %}
+            </div>
+          </div>
+          <div class="sr-stat">
+            <div class="sr-stat-lbl">P/E RATIO</div>
+            <div class="sr-stat-val">{{ "%.2f"|format(stock.pe_ratio) if stock.pe_ratio else "N/A" }}</div>
+          </div>
+          <div class="sr-stat">
+            <div class="sr-stat-lbl">52W HIGH</div>
+            <div class="sr-stat-val up">${{ stock.week_52_high }}</div>
+          </div>
+          <div class="sr-stat">
+            <div class="sr-stat-lbl">52W LOW</div>
+            <div class="sr-stat-val dn">${{ stock.week_52_low }}</div>
+          </div>
+          <div class="sr-stat">
+            <div class="sr-stat-lbl">EXCHANGE</div>
+            <div class="sr-stat-val">{{ stock.exchange }}</div>
+          </div>
+        </div>
+      </div>
+      {% elif search_symbol %}
+      <div style="color:var(--muted);font-size:0.85rem;padding:10px 0;">
+        ❌ "{{ search_symbol }}" not found. Check the ticker symbol and try again.
+      </div>
+      {% else %}
+      <div style="color:var(--muted);font-size:0.82rem;">
+        💡 Search any stock on the market page &nbsp;·&nbsp;
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════ -->
+<!-- TAB: MY WALLET                   -->
+<!-- ════════════════════════════════ -->
+<div class="page" id="tab-wallet">
+  <div class="container">
+    <div class="card">
+      <div class="section-title">💼 My Stock Wallet</div>
+
+      <form class="wallet-form" method="POST" action="/portfolio/add">
+        <input class="in-sym" type="text" name="symbol"
+          placeholder="Ticker (e.g. AAPL)" maxlength="20" required/>
+        <input class="in-qty" type="number" name="quantity"
+          placeholder="Qty" min="1" max="99999" required/>
+        <button class="btn-buy" type="submit">+ Buy</button>
+      </form>
+
+      {% if portfolio %}
+      <table class="port-tbl">
+        <colgroup><col/><col/><col/><col/><col/><col/></colgroup>
+        <thead>
+          <tr>
+            <th>SYMBOL</th>
+            <th>QTY</th>
+            <th>PRICE</th>
+            <th>VALUE</th>
+            <th>CHANGE</th>
+            <th>SELL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in portfolio %}
+          <tr>
+            <td><span class="td-sym">{{ item.symbol }}</span></td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ "%.2f"|format(item.price) }}</td>
+            <td>${{ "{:,.2f}".format(item.market_value) }}</td>
+            <td>
+              <span class="badge {{ 'up' if item.change_pct >= 0 else 'dn' }}">
+                {{ "▲" if item.change_pct >= 0 else "▼" }}{{ "%.2f"|format(item.change_pct|abs) }}%
+              </span>
+            </td>
+            <td>
+              <form method="POST" action="/portfolio/remove/{{ item.symbol }}" style="margin:0">
+                <button class="btn-remove" type="submit" title="Remove {{ item.symbol }}">✕</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="total-row">
+        <span class="total-lbl">Total Portfolio Value</span>
+        <span class="total-val">${{ "{:,.2f}".format(total_value) }}</span>
+      </div>
+
+      {% else %}
+      <div class="empty-wallet">
+        <span>📭</span>
+        Your wallet is empty.<br>
+        Search for any stock on the Dashboard,<br>
+        then add it here using the ticker symbol.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ -->
+<!-- TAB: MARKET                      -->
+<!-- ════════════════════════════════ -->
+<div class="page" id="tab-market">
+  <div class="container">
+    <div class="card">
+      <div class="section-title">📊 Market Watch</div>
+      <table>
+        <thead>
+          <tr>
+            <th>SYMBOL</th>
+            <th>COMPANY</th>
+            <th>PRICE</th>
+            <th>CHANGE</th>
+            <th>VOLUME</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in all_stocks %}
+          <tr onclick="goSearch('{{ s.symbol }}')">
+            <td><span class="td-sym">{{ s.symbol }}</span></td>
+            <td><span class="td-name">{{ s.name }}</span></td>
+            <td>${{ "%.2f"|format(s.price) }}</td>
+            <td>
+              <span class="badge {{ 'up' if s.change_pct >= 0 else 'dn' }}">
+                {{ "▲" if s.change_pct >= 0 else "▼" }} {{ "%.2f"|format(s.change_pct|abs) }}%
+              </span>
+            </td>
+            <td style="color:var(--muted2);font-size:0.8rem;">{{ "{:,}".format(s.volume) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ -->
+<!-- TAB: CREDITS                     -->
+<!-- ════════════════════════════════ -->
+<div class="page" id="tab-credits">
+  <div class="container">
+    <div class="credits-wrap">
+      <h3>Mini Project — Flask & Python · NSUT</h3>
+      <div class="credits-grid">
+        <div class="credit-card">
+          <div class="credit-name">Dhruv Kataria</div>
+          <div class="credit-id">2025UIC3548</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">Shivam Saini</div>
+          <div class="credit-id">2025UIC3551</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">Akshit Gupta</div>
+          <div class="credit-id">2025UIC3552</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">Pujeet Shah</div>
+          <div class="credit-id">2025UIC3546</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">Khushal Wadhwa</div>
+          <div class="credit-id">2025UIC3547</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── JAVASCRIPT ── -->
+<script>
+  // Switch tabs
+  function showTab(name, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // Click market row → search on dashboard
+  function goSearch(symbol) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-dashboard').classList.add('active');
+    document.querySelectorAll('.nav-tab')[0].classList.add('active');
+    window.location.href = '/?symbol=' + symbol;
+  }
+
+  // Uppercase inputs
+  document.querySelectorAll('.in-sym, input[name="symbol"]').forEach(el => {
+    el.addEventListener('input', () => el.value = el.value.toUpperCase());
+  });
+
+  // Show spinner on search
+  const searchForm = document.querySelector('.search-row');
+  if (searchForm) {
+    searchForm.addEventListener('submit', () => {
+      document.getElementById('searchSpinner').classList.add('show');
+    });
+  }
+
+  // Auto refresh every 90 seconds
+  setTimeout(() => location.reload(), 90000);
+
+  // Stay on dashboard if URL has ?symbol
+  if (new URLSearchParams(window.location.search).get('symbol')) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-dashboard').classList.add('active');
+    document.querySelectorAll('.nav-tab')[0].classList.add('active');
+  }
+</script>
+
+</body>
+</html>
